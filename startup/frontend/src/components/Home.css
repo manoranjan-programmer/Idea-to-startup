@@ -1,0 +1,198 @@
+/* HeroSection.css */
+
+.hero-root {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #020618;
+
+}
+
+.hero-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* bars: rise animation (unchanged) */
+.bars-group .bar {
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
+  animation: bar-rise 1.4s ease-out forwards;
+}
+
+.bars-group .bar-1 {
+  animation-delay: 0.1s;
+}
+.bars-group .bar-2 {
+  animation-delay: 0.2s;
+}
+.bars-group .bar-3 {
+  animation-delay: 0.3s;
+}
+.bars-group .bar-4 {
+  animation-delay: 0.4s;
+}
+
+@keyframes bar-rise {
+  0% {
+    transform: scaleY(0);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+/* line draw animation (unchanged) */
+.line-path {
+  stroke-dasharray: var(--line-length);
+  stroke-dashoffset: var(--line-length);
+  animation: line-draw 1.6s ease-out 0.6s forwards;
+}
+
+@keyframes line-draw {
+  0% {
+    stroke-dashoffset: var(--line-length);
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* dots pop after line (unchanged) */
+.line-dots circle {
+  opacity: 0;
+  transform: scale(0.2);
+  transform-origin: center;
+  animation: dot-pop 0.4s ease-out 2.2s forwards;
+}
+
+@keyframes dot-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.title-group .title-line {
+  font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  letter-spacing: 0.75rem;
+  font-weight: 600;          /* slightly bolder for clarity */
+  text-transform: uppercase;
+  opacity: 0;
+  filter: blur(10px);        /* less initial blur so it reads sooner */
+  animation: title-clarify 1.1s ease-out forwards;
+}
+
+.title-group .title-top {
+  font-size: 52px;
+  fill: #aeb2ff;             /* brighter */
+  animation-delay: 0.7s;
+}
+
+.title-group .title-bottom {
+  font-size: 52px;
+  fill: #a6f7ff;             /* brighter */
+  animation-delay: 0.9s;
+}
+
+@keyframes title-clarify {
+  0% {
+    opacity: 0;
+    filter: blur(10px);
+    letter-spacing: 1.1rem;
+  }
+  60% {
+    opacity: 1;
+    filter: blur(1.5px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    letter-spacing: 0.75rem;
+  }
+}
+
+
+/* button animation unchanged, style updated */
+.button-group .button-bg {
+  filter: drop-shadow(0 0 26px rgba(0, 0, 0, 0.7));
+}
+
+.button-group .button-bg,
+.button-group .button-text {
+  opacity: 0;
+  animation: button-fade 0.8s ease-out 1.4s forwards;
+}
+
+.button-text {
+  font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  font-size: 26px;
+  fill: #02101f;
+}
+
+.about-btn {
+  position: absolute;
+  top: 24px;
+  right: 40px;
+  padding: 10px 22px;
+  border-radius: 24px;
+  background: linear-gradient(90deg, #24b2ff, #1d83ff);
+  color: #fff;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.about-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(36, 178, 255, 0.35);
+}
+
+
+@keyframes button-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* grid fade (unchanged) */
+.grid-lines line {
+  opacity: 0;
+  animation: grid-fade 1s ease-out 0.2s forwards;
+}
+
+@keyframes grid-fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0.35;
+  }
+}
+
+/* full-screen base */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}

@@ -1,0 +1,229 @@
+/* ================= PROFILE PAGE ================= */
+
+/* Page background */
+.profile-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #020617;
+  font-family: "Poppins", system-ui, sans-serif;
+  padding: 20px;
+}
+
+/* Card */
+.profile-card {
+  width: 100%;
+  max-width: 480px;
+  background: linear-gradient(
+    180deg,
+    rgba(30, 41, 59, 0.95),
+    rgba(15, 23, 42, 0.95)
+  );
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  padding: 40px 36px 44px;
+  box-shadow: 0 25px 60px rgba(2, 6, 23, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  animation: fadeInCard 0.8s ease forwards;
+}
+
+/* Headings */
+.profile-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 600;
+  color: #f8fafc;
+  text-align: center;
+}
+
+.profile-subtitle {
+  margin: 8px 0 24px;
+  font-size: 14.5px;
+  color: #c7d2fe;
+  text-align: center;
+}
+
+/* ================= AVATAR ================= */
+.profile-avatar-wrapper {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid #3b82f6;
+  object-fit: cover;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+}
+
+/* ================= SMALL MENU ICON ================= */
+.avatar-menu-icon {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #020617;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.avatar-menu-icon:hover {
+  background: #1e293b;
+  color: #3b82f6;
+  transform: scale(1.1);
+}
+
+/* ================= DROPDOWN ================= */
+.avatar-dropdown {
+  position: absolute;
+  top: 38px;
+  right: -10px;
+  width: 160px;
+  background: #020617;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 18px 45px rgba(2, 6, 23, 0.9);
+  overflow: hidden;
+  z-index: 20;
+  animation: dropdownFade 0.18s ease forwards;
+}
+
+.avatar-dropdown-item {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: #e5e7eb;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.avatar-dropdown-item:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.avatar-dropdown-item.danger {
+  color: #f87171;
+}
+
+.avatar-dropdown-item.danger:hover {
+  background: rgba(248, 113, 113, 0.15);
+}
+
+/* ================= FORM ================= */
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.profile-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #cbd5f5;
+  margin-bottom: 6px;
+}
+
+.profile-field input {
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(2, 6, 23, 0.85);
+  color: #f8fafc;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.profile-field input::placeholder {
+  color: #64748b;
+}
+
+.profile-field input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  background: rgba(2, 6, 23, 0.95);
+}
+
+/* ================= BUTTON ================= */
+.profile-button {
+  width: 100%;
+  height: 48px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  color: #020617;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 14px 35px rgba(37, 99, 235, 0.35);
+  margin-top: 10px;
+}
+
+.profile-button:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 18px 45px rgba(37, 99, 235, 0.45);
+}
+
+.profile-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ================= ANIMATIONS ================= */
+@keyframes fadeInCard {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 480px) {
+  .profile-card {
+    padding: 28px 22px;
+  }
+
+  .profile-title {
+    font-size: 22px;
+  }
+
+  .profile-field input {
+    height: 42px;
+  }
+}

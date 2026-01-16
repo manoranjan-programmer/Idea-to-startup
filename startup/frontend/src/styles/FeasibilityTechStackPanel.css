@@ -1,0 +1,80 @@
+/* FULL-WIDTH WRAPPER */
+.techstack-wrapper {
+  width: 100%;
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+/* MAIN CARD */
+.techstack-card {
+  width: 100%;
+  max-width: 1200px;       /* prevents over-stretching on large screens */
+  margin: 0 auto;
+  background: linear-gradient(145deg, #0f172a, #020617);
+  border-radius: 20px;
+  padding: 28px;
+  color: #e5e7eb;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* HEADER */
+.techstack-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.4rem;
+  margin-bottom: 6px;
+}
+
+.techstack-header p {
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+
+/* GRID – THIS FIXES THE HALF-WIDTH ISSUE */
+.techstack-grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+/* INDIVIDUAL BOX */
+.techstack-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 18px;
+  backdrop-filter: blur(10px);
+}
+
+/* BOX TITLE */
+.techstack-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #60a5fa;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* LIST */
+.techstack-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.techstack-box li {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .techstack-card {
+    padding: 20px;
+  }
+}

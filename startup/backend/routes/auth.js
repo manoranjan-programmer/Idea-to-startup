@@ -276,6 +276,9 @@ router.get(
   }
 );
 
+/* ===========================
+   UPDATE PROFILE
+=========================== */
 router.post(
   "/update-profile",
   isAuthenticated,
@@ -287,14 +290,25 @@ router.post(
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Update name
+      /* ========= UPDATE NAME ========= */
       if (req.body.name && req.body.name.trim()) {
         user.name = req.body.name.trim();
       }
 
-      // Update avatar
+      /* ========= REMOVE AVATAR ========= */
+      if (req.body.removeAvatar === "true" && user.avatar) {
+        const oldPath = path.join(__dirname, "..", user.avatar);
+
+        if (fs.existsSync(oldPath)) {
+          fs.unlinkSync(oldPath);
+        }
+
+        user.avatar = undefined;
+      }
+
+      /* ========= UPDATE AVATAR ========= */
       if (req.file) {
-        // Delete old avatar
+        // Delete old avatar if exists
         if (user.avatar) {
           const oldPath = path.join(__dirname, "..", user.avatar);
           if (fs.existsSync(oldPath)) {
@@ -302,19 +316,22 @@ router.post(
           }
         }
 
-        // Save relative path in DB
+        // Save relative path
         user.avatar = `/uploads/avatars/${req.file.filename}`;
       }
 
       await user.save();
 
       res.status(200).json({
+        success: true,
         message: "Profile updated successfully",
         user: {
           _id: user._id,
           name: user.name,
           email: user.email,
-          avatar: getAvatarUrl(user.avatar), // ✅ FULL URL
+          avatar: user.avatar
+            ? `${process.env.BACKEND_URL}${user.avatar}`
+            : null,
         },
       });
     } catch (error) {

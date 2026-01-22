@@ -15,8 +15,7 @@ const Profile = () => {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-
-  const [message, setMessage] = useState(null); 
+  const [message, setMessage] = useState(null);
   // { type: "success" | "error", text: "" }
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -24,11 +23,12 @@ const Profile = () => {
   /* ================= HELPERS ================= */
   const getAvatarSrc = () => {
     if (preview) return preview;
+
     if (!user?.avatar) return DEFAULT_AVATAR;
 
-    // If backend already sends full URL
+    // Backend already returns full URL
     if (user.avatar.startsWith("http")) {
-      return `${user.avatar}?t=${Date.now()}`; // cache-bust
+      return `${user.avatar}?t=${Date.now()}`;
     }
 
     // Relative path fallback
@@ -48,8 +48,10 @@ const Profile = () => {
       }
 
       const data = await res.json();
-      setUser(data);
-      setName(data.name || "");
+
+      // IMPORTANT: backend returns { user: {...} }
+      setUser(data.user);
+      setName(data.user?.name || "");
     } catch (err) {
       console.error("Fetch user error:", err);
     }
@@ -90,10 +92,16 @@ const Profile = () => {
 
   /* ================= REMOVE AVATAR ================= */
   const handleRemoveAvatar = async () => {
+    if (!window.confirm("Remove profile photo?")) return;
+
     try {
-      const res = await fetch(`${API_BASE}/auth/remove-avatar`, {
+      const formData = new FormData();
+      formData.append("removeAvatar", "true");
+
+      const res = await fetch(`${API_BASE}/auth/update-profile`, {
         method: "POST",
         credentials: "include",
+        body: formData,
       });
 
       const data = await res.json();
@@ -124,6 +132,11 @@ const Profile = () => {
 
   /* ================= SAVE PROFILE ================= */
   const handleSave = async () => {
+    if (!name.trim()) {
+      setMessage({ type: "error", text: "Name cannot be empty" });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 

@@ -276,34 +276,54 @@ router.get(
   }
 );
 
-/* ===========================
-   UPDATE PROFILE
-=========================== */
-router.post("/update-profile", isAuthenticated, upload.single("avatar"), async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    if (req.body.name?.trim()) user.name = req.body.name.trim();
-
-    if (req.file) {
-      if (user.avatar) {
-        const oldPath = path.join(__dirname, "..", user.avatar);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+router.post(
+  "/update-profile",
+  isAuthenticated,
+  upload.single("avatar"),
+  async (req, res) => {
+    try {
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
       }
-      user.avatar = `/uploads/avatars/${req.file.filename}`;
-    }
 
-    await user.save();
-    res.json({
-      message: "Profile updated",
-      user: { name: user.name, email: user.email, avatar: getAvatarUrl(user.avatar) },
-    });
-  } catch (err) {
-    console.error("Update Profile Error:", err);
-    res.status(500).json({ message: "Server error" });
+      // Update name
+      if (req.body.name && req.body.name.trim()) {
+        user.name = req.body.name.trim();
+      }
+
+      // Update avatar
+      if (req.file) {
+        // Delete old avatar
+        if (user.avatar) {
+          const oldPath = path.join(__dirname, "..", user.avatar);
+          if (fs.existsSync(oldPath)) {
+            fs.unlinkSync(oldPath);
+          }
+        }
+
+        // Save relative path in DB
+        user.avatar = `/uploads/avatars/${req.file.filename}`;
+      }
+
+      await user.save();
+
+      res.status(200).json({
+        message: "Profile updated successfully",
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          avatar: getAvatarUrl(user.avatar), // ✅ FULL URL
+        },
+      });
+    } catch (error) {
+      console.error("Update Profile Error:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
-});
+);
+
 
 /* ===========================
    GET CURRENT USER

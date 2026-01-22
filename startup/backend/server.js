@@ -4,46 +4,41 @@ const session = require("express-session");
 const passport = require("./config/passport");
 const cors = require("cors");
 const path = require("path");
-const fs = require("fs");
-const {MongoStore} = require("connect-mongo");
+const { MongoStore } = require("connect-mongo"); 
 require("dotenv").config();
 
 const app = express();
 
-/* ===================== ENV ===================== */
-const PORT = process.env.PORT || 5000;
-const BASE_URL =
-  process.env.GOOGLE_CALLBACK_URL || `http://localhost:${PORT}`;
-
 /* ===================== DB CONNECTION & INDEX FIX ===================== */
-mongoose
+// We store the clientPromise to pass it to MongoStore for session persistence
+const clientPromise = mongoose
   .connect(process.env.MONGO_URI)
   .then(async (m) => {
     console.log("✅ MongoDB connected successfully");
-
+    
     try {
-      const User = m.model("User");
+      const User = m.model('User'); 
 
-      // 1. Cleanup literal null values
+      // 1. CLEANUP: Unset any literal 'null' values that cause E11000 errors
       await User.updateMany(
-        { supabaseUserId: null },
+        { supabaseUserId: null }, 
         { $unset: { supabaseUserId: "" } }
       );
-      console.log("🧹 Cleaned up literal null values");
+      console.log("🧹 Cleaned up literal null values in users collection");
 
-      // 2. Drop old index if exists
-      await User.collection
-        .dropIndex("supabaseUserId_1")
-        .catch(() => {
-          console.log("ℹ️ Old index not found or already removed");
-        });
+      // 2. RESET INDEX: Drop old index to allow the new Partial Index to take over
+      await User.collection.dropIndex('supabaseUserId_1').catch(() => {
+        console.log("ℹ️ Old index not found or already updated.");
+      });
 
-      // 3. Sync indexes (partial index active)
+      // 3. SYNC: Build indexes based on the new Partial Index logic in User.js
       await User.syncIndexes();
-      console.log("✅ Database indexes synchronized");
+      console.log("✅ Database indexes synchronized (Partial Index active)");
     } catch (err) {
-      console.warn("⚠️ Index maintenance skipped:", err.message);
+      console.error("⚠️ Index maintenance skipped:", err.message);
     }
+
+    return m.connection.getClient(); 
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err.message);
@@ -51,7 +46,8 @@ mongoose
   });
 
 /* ===================== TRUST PROXY ===================== */
-app.set("trust proxy", 1);
+// Needed for secure cookies on Render/Heroku/Railway when using HTTPS
+app.set("trust proxy", 1); 
 
 /* ===================== BODY PARSERS ===================== */
 app.use(express.json({ limit: "20mb" }));
@@ -59,24 +55,25 @@ app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 /* ===================== CORS CONFIG ===================== */
 const allowedOrigins = [
-  process.env.GOOGLE_CLIENT_URL, // frontend prod
-  "http://localhost:5173",
-  "http://localhost:3000",
+  process.env.GOOGLE_CLIENT_URL, // React frontend prod URL
+  "http://localhost:5173",       
+  "http://localhost:3000",       
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       return callback(new Error("Not allowed by CORS"));
     },
-    credentials: true,
+    credentials: true, // Required for sessions/cookies
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
 
-/* ===================== SESSION CONFIG (FIXED) ===================== */
+/* ===================== SESSION CONFIG ===================== */
 app.use(
   session({
     name: "startup.sid",
@@ -84,16 +81,15 @@ app.use(
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI, // ✅ CORRECT FOR v5+
+      clientPromise: clientPromise, 
       collectionName: "sessions",
       ttl: 14 * 24 * 60 * 60, // 14 days
-      autoRemove: "native",
+      autoRemove: 'native'
     }),
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite:
-        process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production", // true on prod (requires HTTPS)
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24, // 1 day
     },
   })
@@ -103,18 +99,11 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-/* ===================== STATIC FILES (UPLOADS FIX) ===================== */
-const uploadsPath = path.join(__dirname, "uploads");
-
-// Ensure uploads folder exists
-if (!fs.existsSync(uploadsPath)) {
-  fs.mkdirSync(uploadsPath, { recursive: true });
-}
-
-app.use("/uploads", express.static(uploadsPath));
+/* ===================== STATIC FILES ===================== */
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ===================== ROUTES ===================== */
-app.use("/auth", require("./routes/auth"));
+app.use("/auth", require("./routes/auth")); 
 app.use("/api/feasibility", require("./routes/feasibility"));
 app.use("/api/upload", require("./routes/uploadRoutes"));
 
@@ -125,7 +114,6 @@ app.get("/", (req, res) => {
     message: "🚀 Backend running",
     loggedIn: !!req.user,
     environment: process.env.NODE_ENV || "development",
-    baseUrl: BASE_URL,
   });
 });
 
@@ -139,6 +127,7 @@ app.use((err, req, res, next) => {
 });
 
 /* ===================== START SERVER ===================== */
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on ${BASE_URL}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

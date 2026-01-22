@@ -2,9 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Profile.css";
 
-const DEFAULT_AVATAR =
-  "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
 const Profile = () => {
   const navigate = useNavigate();
   const avatarRef = useRef(null);
@@ -15,32 +12,18 @@ const Profile = () => {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [message, setMessage] = useState(null);
+
+  // 🔔 normal message state
+  const [message, setMessage] = useState(null); 
   // { type: "success" | "error", text: "" }
-
-  const API_BASE = import.meta.env.VITE_API_BASE_URL;
-
-  /* ================= HELPERS ================= */
-  const getAvatarSrc = () => {
-    if (preview) return preview;
-
-    if (!user?.avatar) return DEFAULT_AVATAR;
-
-    // Backend already returns full URL
-    if (user.avatar.startsWith("http")) {
-      return `${user.avatar}?t=${Date.now()}`;
-    }
-
-    // Relative path fallback
-    return `${API_BASE}${user.avatar}?t=${Date.now()}`;
-  };
 
   /* ================= FETCH USER ================= */
   const fetchUser = async () => {
     try {
-      const res = await fetch(`${API_BASE}/auth/me`, {
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/me`,
+        { credentials: "include" }
+      );
 
       if (!res.ok) {
         navigate("/login");
@@ -48,10 +31,8 @@ const Profile = () => {
       }
 
       const data = await res.json();
-
-      // IMPORTANT: backend returns { user: {...} }
-      setUser(data.user);
-      setName(data.user?.name || "");
+      setUser(data);
+      setName(data.name || "");
     } catch (err) {
       console.error("Fetch user error:", err);
     }
@@ -61,16 +42,11 @@ const Profile = () => {
     fetchUser();
   }, []);
 
-  /* ================= CLEAN PREVIEW ================= */
-  useEffect(() => {
-    return () => {
-      if (preview) URL.revokeObjectURL(preview);
-    };
-  }, [preview]);
-
   /* ================= AVATAR MENU ================= */
   const handleMenuClick = () => {
-    avatarRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (avatarRef.current) {
+      avatarRef.current.scrollIntoView({ behavior: "smooth" });
+    }
 
     if (!user?.avatar) {
       document.getElementById("avatar-input").click();
@@ -92,36 +68,26 @@ const Profile = () => {
 
   /* ================= REMOVE AVATAR ================= */
   const handleRemoveAvatar = async () => {
-    if (!window.confirm("Remove profile photo?")) return;
-
     try {
-      const formData = new FormData();
-      formData.append("removeAvatar", "true");
-
-      const res = await fetch(`${API_BASE}/auth/update-profile`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/remove-avatar`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
 
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage({
-          type: "error",
-          text: data.message || "Failed to remove photo",
-        });
+        setMessage({ type: "error", text: data.message || "Failed to remove photo" });
         return;
       }
 
       setPreview(null);
       setFile(null);
       setShowMenu(false);
-
-      setMessage({
-        type: "success",
-        text: "Profile photo removed successfully",
-      });
+      setMessage({ type: "success", text: "Profile photo removed successfully" });
 
       await fetchUser();
     } catch (err) {
@@ -132,52 +98,45 @@ const Profile = () => {
 
   /* ================= SAVE PROFILE ================= */
   const handleSave = async () => {
-    if (!name.trim()) {
-      setMessage({ type: "error", text: "Name cannot be empty" });
-      return;
-    }
-
     setLoading(true);
     setMessage(null);
 
     try {
       const formData = new FormData();
-      formData.append("name", name.trim());
+      formData.append("name", name);
       if (file) formData.append("avatar", file);
 
-      const res = await fetch(`${API_BASE}/auth/update-profile`, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/update-profile`,
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
 
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage({
-          type: "error",
-          text: data.message || "Update failed",
-        });
+        setMessage({ type: "error", text: data.message || "Update failed" });
         return;
       }
 
-      setMessage({
-        type: "success",
-        text: "Profile updated successfully",
-      });
+      setMessage({ type: "success", text: "Profile updated successfully" });
 
       setPreview(null);
       setFile(null);
 
       await fetchUser();
 
-      setTimeout(() => navigate("/select-idea"), 800);
+      // optional delay before redirect
+      setTimeout(() => {
+        navigate("/select-idea");
+      }, 800);
+
     } catch (err) {
       console.error(err);
-      setMessage({
-        type: "error",
-        text: "Something went wrong while saving",
-      });
+      setMessage({ type: "error", text: "Something went wrong while saving" });
     } finally {
       setLoading(false);
     }
@@ -189,6 +148,7 @@ const Profile = () => {
     <div className="profile-container">
       <div className="profile-card">
 
+        {/* 🔔 NORMAL MESSAGE */}
         {message && (
           <div className={`form-message ${message.type}`}>
             {message.text}
@@ -198,10 +158,13 @@ const Profile = () => {
         {/* ================= AVATAR ================= */}
         <div className="profile-avatar-wrapper" ref={avatarRef}>
           <img
-            src={getAvatarSrc()}
+            src={
+              preview ||
+              user.avatar ||
+              "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+            }
             alt="Profile"
             className="profile-avatar"
-            onError={(e) => (e.target.src = DEFAULT_AVATAR)}
           />
 
           <div className="avatar-menu-icon" onClick={handleMenuClick}>

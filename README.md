@@ -168,3 +168,10 @@ npm run dev
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+## 🚀 Live Project (Scan QR Code)
+
+Scan the QR code below to open the deployed project:
+
+![Project QR Code](./qr-code.png)
+<img width="370" height="370" alt="idea-to-startup" src="https://github.com/user-attachments/assets/137b54ec-2393-48e1-be19-6083a608d4bb" />

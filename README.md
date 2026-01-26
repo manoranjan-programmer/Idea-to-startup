@@ -173,5 +173,5 @@ npm run dev
 
 Scan the QR code below to open the deployed project:
 
-![Project QR Code](./qr-code.png)
+
 <img width="370" height="370" alt="idea-to-startup" src="https://github.com/user-attachments/assets/137b54ec-2393-48e1-be19-6083a608d4bb" />

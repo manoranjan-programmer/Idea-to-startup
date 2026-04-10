@@ -16,7 +16,7 @@
     "@anthropic-ai/sdk": "^0.71.2",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.90.1",
-    "axios": "^1.13.2",
+    "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
     "connect-mongo": "^6.0.0",
     "cookie-parser": "^1.4.7",
@@ -35,7 +35,7 @@
     "openai": "^6.15.0",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "pdf-parse": "^1.1.1",
+    "pdf-parse": "^1.1.4",
     "resend": "^6.7.0"
   }
 }

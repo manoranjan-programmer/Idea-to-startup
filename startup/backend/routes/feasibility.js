@@ -9,7 +9,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 /* ===================== AVAILABLE MODELS ===================== */
 const MODELS = [
-  "gemini-2.5-pro",
   "gemini-1.5-flash",
   "gemini-1.5-pro",
 ];

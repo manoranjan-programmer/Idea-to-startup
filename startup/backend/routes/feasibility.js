@@ -7,51 +7,71 @@ const router = express.Router();
 /* ===================== GEMINI CONFIG ===================== */
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const primaryModel = genAI.getGenerativeModel({
-  model: "gemini-2.5-pro",
-  generationConfig: {
-    temperature: 0.3,
-    topP: 0.9,
-    topK: 40,
-    maxOutputTokens: 2048,
-  },
-});
+/* ===================== AVAILABLE MODELS ===================== */
+const MODELS = [
+  "gemini-2.5-pro",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+];
 
-const fallbackModel = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-});
+/* ===================== TIMEOUT FUNCTION ===================== */
+const withTimeout = (promise, ms = 15000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Request Timeout")), ms)
+    ),
+  ]);
+};
 
-/* ===================== ADVANCED RETRY FUNCTION ===================== */
-async function generateWithRetry(prompt, retries = 5) {
-  let delay = 2000; // start with 2 sec
+/* ===================== RETRY + FALLBACK ===================== */
+async function generateWithRetry(prompt, retries = 4) {
+  let delay = 2000;
 
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log(`🚀 Attempt ${i + 1}`);
-      return await primaryModel.generateContent(prompt);
-    } catch (err) {
-      console.log(`⚠️ Attempt ${i + 1} failed:`, err.message);
+  for (let attempt = 0; attempt < retries; attempt++) {
+    for (let modelName of MODELS) {
+      try {
+        console.log(`🚀 Attempt ${attempt + 1} using ${modelName}`);
 
-      // if last retry -> break
-      if (i === retries - 1) break;
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            temperature: 0.3,
+            topP: 0.9,
+            topK: 40,
+            maxOutputTokens: 2048,
+          },
+        });
 
-      // wait before retry
-      console.log(`⏳ Waiting ${delay / 1000}s before retry...`);
-      await new Promise((res) => setTimeout(res, delay));
+        const result = await withTimeout(
+          model.generateContent(prompt),
+          15000
+        );
 
-      // exponential increase
-      delay *= 2;
+        console.log(`✅ Success with ${modelName}`);
+        return result;
+      } catch (err) {
+        console.log(`⚠️ ${modelName} failed: ${err.message}`);
+
+        // Retry only for overload / timeout errors
+        if (
+          err.message.includes("503") ||
+          err.message.toLowerCase().includes("overloaded") ||
+          err.message.includes("Timeout")
+        ) {
+          continue;
+        } else {
+          throw err;
+        }
+      }
     }
+
+    console.log(`⏳ Waiting ${delay / 1000}s before retry...`);
+    await new Promise((res) => setTimeout(res, delay));
+    delay *= 2;
   }
 
-  /* ================= FALLBACK ================= */
-  try {
-    console.log("⚠️ Switching to fallback model...");
-    return await fallbackModel.generateContent(prompt);
-  } catch (err) {
-    console.log("❌ Fallback also failed:", err.message);
-    throw new Error("All AI models are currently overloaded");
-  }
+  throw new Error("All Gemini models are overloaded. Try again later.");
 }
 
 /* ===================== HELPERS ===================== */
@@ -72,7 +92,7 @@ const calculateFeasibilityScore = ({
 
 /* =========================================================
    POST: AI / DOCUMENT FEASIBILITY ANALYSIS
-   ========================================================= */
+========================================================= */
 router.post("/", async (req, res) => {
   try {
     console.log("📩 Feasibility request:", req.body);
@@ -130,24 +150,13 @@ router.post("/", async (req, res) => {
           innovationScore: innovation,
           aiSummary:
             "Temporary heuristic feasibility estimate. Enable AI for detailed analysis.",
-          metricAnalyses: {
-            technical: "Heuristic technical feasibility.",
-            market: "Heuristic market feasibility.",
-            research: "Heuristic research feasibility.",
-            innovation: "Heuristic innovation assessment.",
-          },
-          techStackSuggestion: {
-            frontend: ["React.js"],
-            backend: ["Node.js", "Express.js"],
-            database: ["MongoDB"],
-            infrastructure: ["AWS"],
-          },
+          metricAnalyses: {},
+          techStackSuggestion: {},
           strengths: ["Basic feasibility signals detected"],
           risks: ["Heuristic evaluation only"],
-          futureScope: ["Enable AI analysis for full roadmap"],
+          futureScope: ["Enable AI analysis"],
           marketTrends: [],
-          detailedAnalysis:
-            "This feasibility analysis was generated without AI.",
+          detailedAnalysis: "Generated without AI",
           verdict: "Temporary estimate",
         },
       });
@@ -164,7 +173,7 @@ router.post("/", async (req, res) => {
     } catch (err) {
       return res.status(503).json({
         success: false,
-        message: "AI servers are busy. Please try again later.",
+        message: err.message,
       });
     }
 
@@ -179,7 +188,16 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const aiResult = JSON.parse(match[0]);
+    let aiResult;
+    try {
+      aiResult = JSON.parse(match[0]);
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Invalid JSON from AI",
+        raw: rawText,
+      });
+    }
 
     const technical = clamp(aiResult.technicalScore);
     const marketScore = clamp(aiResult.marketScore);
@@ -206,14 +224,9 @@ router.post("/", async (req, res) => {
         marketScore,
         researchScore: research,
         innovationScore: innovation,
-        aiSummary: aiResult.aiSummary || "AI analysis completed.",
+        aiSummary: aiResult.aiSummary || "",
         metricAnalyses: aiResult.metricAnalyses || {},
-        techStackSuggestion: aiResult.techStackSuggestion || {
-          frontend: [],
-          backend: [],
-          database: [],
-          infrastructure: [],
-        },
+        techStackSuggestion: aiResult.techStackSuggestion || {},
         strengths: aiResult.strengths || [],
         risks: aiResult.risks || [],
         futureScope: aiResult.futureScope || [],
@@ -251,9 +264,10 @@ router.get("/:id", async (req, res) => {
   try {
     const result = await Feasibility.findById(req.params.id);
     if (!result) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Not found",
+      });
     }
 
     res.status(200).json({ success: true, data: result });

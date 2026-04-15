@@ -1,70 +1,13 @@
 const express = require("express");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Groq = require("groq-sdk");
 const Feasibility = require("../models/Feasibility");
 
 const router = express.Router();
 
-/* ===================== GEMINI CONFIG ===================== */
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-/* ===================== TIMEOUT ===================== */
-const withTimeout = (promise, ms = 30000) => {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), ms)
-    ),
-  ]);
-};
-
-/* ===================== RETRY ===================== */
-async function generateWithRetry(prompt, retries = 3) {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      console.log(`🚀 Attempt ${attempt + 1}`);
-
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 2048, // 🔥 increased
-        },
-      });
-
-      const result = await withTimeout(
-        model.generateContent(prompt),
-        30000 // 🔥 increased timeout
-      );
-
-      return result;
-    } catch (err) {
-      console.log("⚠️ Retry error:", err.message);
-      await new Promise((r) => setTimeout(r, 2000));
-    }
-  }
-
-  throw new Error("Gemini failed after retries");
-}
-
-/* ===================== JSON CLEANER ===================== */
-const extractJSON = (text) => {
-  try {
-    if (!text) return null;
-
-    let cleaned = text.replace(/```json|```/gi, "").trim();
-
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-
-    if (start === -1 || end === -1) return null;
-
-    const jsonString = cleaned.substring(start, end + 1);
-
-    return JSON.parse(jsonString);
-  } catch {
-    return null;
-  }
-};
+/* ===================== GROQ CONFIG ===================== */
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 /* ===================== HELPERS ===================== */
 const clamp = (n) => Math.max(0, Math.min(100, Number(n) || 50));
@@ -83,39 +26,43 @@ const calculateFeasibilityScore = ({
   );
 
 /* =========================================================
-   POST: FEASIBILITY ANALYSIS
-========================================================= */
+   POST: AI / DOCUMENT FEASIBILITY ANALYSIS
+   ========================================================= */
 router.post("/", async (req, res) => {
   try {
+    console.log("📩 Feasibility request:", req.body);
+
     const {
       idea,
       shortDescription,
       problemStatement,
       market,
       documentText,
+      budget,
       useAI,
     } = req.body;
 
     if (!idea && !documentText && !shortDescription) {
       return res.status(400).json({
         success: false,
-        message: "Idea or document required",
+        message: "Idea, short description, or document content is required",
       });
     }
 
-    const context =
+    /* ================= INPUT PRIORITY ================= */
+    const analysisContext =
       shortDescription ||
       problemStatement ||
       market ||
       documentText ||
-      "No context";
+      "No context provided";
 
     /* ================= TEMP MODE ================= */
     if (useAI === false) {
-      const technical = 70;
-      const marketScore = 65;
-      const research = 60;
-      const innovation = 75;
+      const technical = Math.floor(Math.random() * 20) + 70;
+      const marketScore = technical - 4;
+      const research = technical - 6;
+      const innovation = technical - 3;
 
       const feasibilityScore = calculateFeasibilityScore({
         technical,
@@ -124,87 +71,128 @@ router.post("/", async (req, res) => {
         innovation,
       });
 
-      return res.json({
+      return res.status(200).json({
         success: true,
         source: "TEMP",
         data: {
-          idea,
+          idea: idea || "Extracted from document",
+          shortDescription,
+          problemStatement: analysisContext,
+          budget,
           feasibilityScore,
           technicalScore: technical,
           marketScore,
           researchScore: research,
           innovationScore: innovation,
+          aiSummary:
+            "Temporary heuristic feasibility estimate. Enable AI for detailed analysis.",
+          metricAnalyses: {
+            technical: "Heuristic technical feasibility.",
+            market: "Heuristic market feasibility.",
+            research: "Heuristic research feasibility.",
+            innovation: "Heuristic innovation assessment.",
+          },
+          techStackSuggestion: {
+            frontend: ["React.js"],
+            backend: ["Node.js", "Express.js"],
+            database: ["MongoDB"],
+            infrastructure: ["AWS"],
+          },
+          strengths: ["Basic feasibility signals detected"],
+          risks: ["Heuristic evaluation only"],
+          futureScope: ["Enable AI analysis for full roadmap"],
+          marketTrends: [],
+          detailedAnalysis:
+            "This feasibility analysis was generated without AI.",
+          verdict: "Temporary estimate",
         },
       });
     }
 
-    /* ================= AI MODE ================= */
+    /* ================= AI MODE (GROQ) ================= */
+    console.log("🤖 GROQ AI MODE ENABLED");
+
     const prompt = `
-You are a startup feasibility expert.
+You are a senior startup feasibility analyst and technical architect.
 
-STRICT RULES:
-- Return ONLY valid JSON
-- No markdown
-- No explanation
-- Ensure JSON is COMPLETE and CLOSED
+The SHORT DESCRIPTION is the strongest signal.
 
-Idea: ${idea}
-Context: ${context}
+STARTUP IDEA:
+${idea || "Not provided"}
 
-Return:
+SHORT DESCRIPTION (PRIMARY CONTEXT):
+${shortDescription || "Not provided"}
+
+PROBLEM / MARKET / DOCUMENT CONTEXT:
+${problemStatement || market || documentText || "Not provided"}
+
+BUDGET:
+${budget || "Not specified"}
+
+Evaluate each metric from 0–100 and recommend a suitable tech stack.
+
+Respond with ONLY valid JSON:
+
 {
-  "technicalScore": 0,
-  "marketScore": 0,
-  "researchScore": 0,
-  "innovationScore": 0,
-  "aiSummary": "",
-  "strengths": [],
-  "risks": [],
-  "futureScope": [],
-  "verdict": ""
+  "technicalScore": number,
+  "marketScore": number,
+  "researchScore": number,
+  "innovationScore": number,
+
+  "aiSummary": "2–3 line executive summary",
+
+  "metricAnalyses": {
+    "technical": "analysis",
+    "market": "analysis",
+    "research": "analysis",
+    "innovation": "analysis"
+  },
+
+  "techStackSuggestion": {
+    "frontend": ["tool"],
+    "backend": ["tool"],
+    "database": ["tool"],
+    "infrastructure": ["tool"]
+  },
+
+  "strengths": ["..."],
+  "risks": ["..."],
+  "futureScope": ["..."],
+  "marketTrends": ["..."],
+  "detailedAnalysis": "detailed feasibility explanation",
+  "verdict": "Viable | Needs Work | Not Viable"
 }
 `;
 
-    let rawText = "";
+    const MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+    console.log("🤖 Using Groq model:", MODEL);
 
-    // 🔥 Retry if truncated
-    for (let i = 0; i < 2; i++) {
-      const result = await generateWithRetry(prompt);
-      rawText = result.response.text();
-
-      console.log("🔍 RAW:", rawText);
-
-      if (rawText && rawText.trim().endsWith("}")) {
-        break;
-      }
-
-      console.log("⚠️ Incomplete JSON, retrying...");
-    }
-
-    const aiResult = extractJSON(rawText);
-
-    if (!aiResult) {
-      console.log("❌ JSON parsing failed → fallback");
-
-      return res.json({
-        success: true,
-        source: "PARSE_FALLBACK",
-        data: {
-          idea,
-          feasibilityScore: 60,
-          technicalScore: 60,
-          marketScore: 60,
-          researchScore: 60,
-          innovationScore: 60,
-          aiSummary: "AI response incomplete",
-          strengths: [],
-          risks: ["Invalid AI response"],
-          futureScope: [],
-          verdict: "Retry recommended",
+    const result = await groq.chat.completions.create({
+      model: MODEL,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
         },
+      ],
+      temperature: 0.7,
+      max_tokens: 2048,
+    });
+
+    const rawText = result.choices[0].message.content;
+
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (!match) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to parse Groq response",
+        raw: rawText,
       });
     }
 
+    const aiResult = JSON.parse(match[0]);
+
+    /* ================= NORMALIZE SCORES ================= */
     const technical = clamp(aiResult.technicalScore);
     const marketScore = clamp(aiResult.marketScore);
     const research = clamp(aiResult.researchScore);
@@ -217,54 +205,77 @@ Return:
       innovation,
     });
 
-    return res.json({
+    /* ================= FINAL RESPONSE ================= */
+    return res.status(200).json({
       success: true,
-      source: "GEMINI",
+      source: "GROQ",
       data: {
-        idea,
+        idea: idea || "Extracted from document",
+        shortDescription,
+        problemStatement: analysisContext,
+        budget,
         feasibilityScore,
         technicalScore: technical,
         marketScore,
         researchScore: research,
         innovationScore: innovation,
-        aiSummary: aiResult.aiSummary || "",
+        aiSummary: aiResult.aiSummary || "AI analysis completed.",
+        metricAnalyses: aiResult.metricAnalyses || {},
+        techStackSuggestion: aiResult.techStackSuggestion || {
+          frontend: [],
+          backend: [],
+          database: [],
+          infrastructure: [],
+        },
         strengths: aiResult.strengths || [],
         risks: aiResult.risks || [],
         futureScope: aiResult.futureScope || [],
-        verdict: aiResult.verdict || "Review needed",
+        marketTrends: aiResult.marketTrends || [],
+        detailedAnalysis: aiResult.detailedAnalysis || "",
+        verdict: aiResult.verdict || "Needs review",
       },
     });
-
   } catch (error) {
-    console.error("❌ Error:", error.message);
-
+    console.error("❌ Groq Feasibility Error:", error.message);
     return res.status(500).json({
       success: false,
-      message: "Server error",
+      message: "AI feasibility analysis failed",
       error: error.message,
     });
   }
 });
 
-/* ================= SAVE ================= */
+/* ================= SAVE RESULT ================= */
 router.post("/save", async (req, res) => {
   try {
     const record = await Feasibility.create(req.body);
     res.status(201).json({ success: true, id: record._id });
-  } catch {
-    res.status(500).json({ success: false });
+  } catch (err) {
+    console.error("❌ Save Error:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to save feasibility",
+    });
   }
 });
 
-/* ================= GET ================= */
+/* ================= GET BY ID ================= */
 router.get("/:id", async (req, res) => {
   try {
     const result = await Feasibility.findById(req.params.id);
-    if (!result) return res.status(404).json({ success: false });
+    if (!result) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Not found" });
+    }
 
-    res.json({ success: true, data: result });
-  } catch {
-    res.status(500).json({ success: false });
+    res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    console.error("❌ Fetch Error:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch feasibility",
+    });
   }
 });
 
